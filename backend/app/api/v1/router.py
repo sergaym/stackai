@@ -4,7 +4,7 @@ Main API v1 router configuration.
 
 from fastapi import APIRouter
 
-from app.api.v1.endpoints import libraries, documents, chunks
+from app.api.v1.endpoints import libraries, documents, chunks, search
 
 # Create the main API router
 api_router = APIRouter()
@@ -26,4 +26,10 @@ api_router.include_router(
     chunks.router,
     prefix="/chunks",
     tags=["chunks"],
+)
+
+api_router.include_router(
+    search.router,
+    prefix="/search",
+    tags=["search"],
 )
