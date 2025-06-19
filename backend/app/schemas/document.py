@@ -61,4 +61,16 @@ class DocumentListResponse(BaseModel):
     documents: List[DocumentResponse] = Field(..., description="List of documents")
     total: int = Field(..., description="Total number of documents")
     skip: int = Field(..., description="Number of items skipped")
-    limit: int = Field(..., description="Maximum number of items returned") 
+    limit: int = Field(..., description="Maximum number of items returned")
+
+
+class DocumentDeleteResponse(BaseModel):
+    """Response schema for document deletion operations."""
+    
+    message: str = Field(..., description="Deletion confirmation message")
+    
+    class Config:
+        json_encoders = {
+            datetime: lambda v: v.isoformat(),
+            UUID: lambda v: str(v),
+        } 

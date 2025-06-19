@@ -150,7 +150,7 @@ async def update_library(
         if library_data.description is not None:
             updates["description"] = library_data.description
         if library_data.metadata is not None:
-            updates["metadata_"] = library_data.metadata  # Note: converting to metadata_ field
+            updates["metadata_"] = library_data.metadata  # Converting to metadata_ field
         
         library = await library_service.update_library(library_id, **updates)
         if not library:
