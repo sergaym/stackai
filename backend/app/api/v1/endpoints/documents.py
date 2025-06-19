@@ -33,7 +33,7 @@ def _document_to_response(document: Document) -> DocumentResponse:
         metadata=document.metadata_ or {},  # Handle metadata_ -> metadata conversion
         created_at=document.created_at,
         updated_at=document.updated_at,
-        chunk_count=document.chunk_count,
+        chunk_count=len(document.chunks) if document.chunks else 0,
         is_processed=document.is_processed,
         processing_status=document.processing_status
     )

@@ -32,8 +32,8 @@ def _library_to_response(library) -> LibraryResponse:
         metadata=library.metadata_ or {},  # Handle metadata_ -> metadata conversion
         created_at=library.created_at,
         updated_at=library.updated_at,
-        document_count=library.document_count,
-        chunk_count=library.chunk_count
+        document_count=len(library.documents) if library.documents else 0,
+        chunk_count=len(library.chunks) if library.chunks else 0
     )
 
 
