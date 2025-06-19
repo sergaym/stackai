@@ -1,5 +1,5 @@
 """
-Database models - KISS approach.
+Database models.
 """
 
 from datetime import datetime
