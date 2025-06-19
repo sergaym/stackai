@@ -155,68 +155,57 @@ async def update_chunk(
     Returns:
         Updated chunk
     """
-    # Build update dict from non-None fields
-    updates = {}
+    # Handle text update with automatic re-embedding
     if chunk_data.text is not None:
-        updates["text"] = chunk_data.text
-        updates["text_length"] = len(chunk_data.text)
-    if chunk_data.position is not None:
-        updates["position"] = chunk_data.position
-    if chunk_data.metadata is not None:
-        updates["metadata_"] = chunk_data.metadata
-    
-    chunk = await chunk_service.update_chunk(chunk_id, **updates)
-    if not chunk:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Chunk with ID {chunk_id} not found"
-        )
+        chunk = await chunk_service.update_chunk_text(chunk_id, chunk_data.text)
+        if not chunk:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Chunk with ID {chunk_id} not found"
+            )
+    else:
+        # Build update dict for non-text fields
+        updates = {}
+        if chunk_data.position is not None:
+            updates["position"] = chunk_data.position
+        if chunk_data.metadata is not None:
+            updates["metadata_"] = chunk_data.metadata
+        
+        if updates:  # Only update if there are changes
+            chunk = await chunk_service.update_chunk(chunk_id, **updates)
+            if not chunk:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Chunk with ID {chunk_id} not found"
+                )
+        else:
+            # No updates requested
+            chunk = await chunk_service.get_chunk(chunk_id)
+            if not chunk:
+                                 raise HTTPException(
+                     status_code=status.HTTP_404_NOT_FOUND,
+                     detail=f"Chunk with ID {chunk_id} not found"
+                 )
     
     return _chunk_to_response(chunk)
 
 
-@router.put("/{chunk_id}/embedding", response_model=ChunkResponse)
-async def update_chunk_embedding(
+@router.post("/{chunk_id}/regenerate-embedding", response_model=ChunkResponse)
+async def regenerate_chunk_embedding(
     chunk_id: UUID,
-    embedding_data: dict,
     chunk_service: ChunkService = Depends(get_chunk_service),
 ) -> ChunkResponse:
     """
-    Update a chunk's embedding vector.
+    Regenerate embedding for a chunk using the current text.
     
     Args:
         chunk_id: Chunk identifier
-        embedding_data: Dictionary with 'embedding', 'model', and optional 'is_indexed'
         chunk_service: Injected chunk service
         
     Returns:
-        Updated chunk with embedding
+        Updated chunk with new embedding
     """
-    if "embedding" not in embedding_data:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Missing 'embedding' field in request body"
-        )
-    
-    embedding = embedding_data["embedding"]
-    model = embedding_data.get("model", "unknown")
-    is_indexed = embedding_data.get("is_indexed", True)
-    
-    if not isinstance(embedding, list) or not all(isinstance(x, (int, float)) for x in embedding):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="'embedding' must be a list of numbers"
-        )
-    
-    # Update the chunk with embedding
-    updates = {
-        "embedding": embedding,
-        "embedding_dimension": len(embedding),
-        "embedding_model": model,
-        "is_indexed": is_indexed
-    }
-    
-    chunk = await chunk_service.update_chunk(chunk_id, **updates)
+    chunk = await chunk_service.regenerate_embedding(chunk_id)
     if not chunk:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

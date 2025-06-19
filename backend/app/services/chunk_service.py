@@ -2,7 +2,7 @@
 Chunk business logic service.
 """
 
-from typing import List, Optional
+from typing import List, Optional, Tuple
 from uuid import UUID
 
 from app.db.models import Chunk
@@ -10,6 +10,7 @@ from app.repositories.async_chunk_repository import AsyncChunkRepository
 from app.repositories.async_document_repository import AsyncDocumentRepository
 from app.repositories.async_library_repository import AsyncLibraryRepository
 from app.services.embedding_service import generate_embeddings
+from app.core.config import settings
 
 
 class ChunkService:
@@ -22,10 +23,22 @@ class ChunkService:
         self.document_repository = document_repository
         self.library_repository = library_repository
     
+    async def _generate_embedding_for_chunk(self, text: str) -> Tuple[Optional[List[float]], Optional[int], str, bool]:
+        """Generate embedding for chunk text - separated concern."""
+        embeddings = await generate_embeddings([text])
+        embedding = embeddings[0] if embeddings else None
+        
+        return (
+            embedding,
+            len(embedding) if embedding else None,
+            settings.embedding_model,
+            True if embedding else False
+        )
+    
     async def create_chunk(self, document_id: UUID, library_id: UUID, text: str, 
                          position: int = 0, metadata: Optional[dict] = None) -> Chunk:
         """Create a new chunk with validation and automatic embedding generation."""
-        # Check if document and library exist
+        # Validation
         document = await self.document_repository.get_by_id(document_id)
         if not document:
             raise ValueError(f"Document with ID {document_id} not found")
@@ -34,14 +47,13 @@ class ChunkService:
         if not library:
             raise ValueError(f"Library with ID {library_id} not found")
         
-        # Ensure document belongs to the library
         if document.library_id != library_id:
             raise ValueError(f"Document {document_id} does not belong to library {library_id}")
         
-        # Generate embedding for the text
-        embeddings = await generate_embeddings([text])
-        embedding = embeddings[0] if embeddings else None
+        # Generate embedding
+        embedding, dimension, model, is_indexed = await self._generate_embedding_for_chunk(text)
         
+        # Create chunk
         chunk = Chunk(
             document_id=document_id,
             library_id=library_id,
@@ -49,13 +61,52 @@ class ChunkService:
             text_length=len(text),
             position=position,
             metadata_=metadata or {},
-            # Auto-embed fields
             embedding=embedding,
-            embedding_dimension=len(embedding) if embedding else None,
-            embedding_model="cohere-embed-english-v3.0",
-            is_indexed=True if embedding else False
+            embedding_dimension=dimension,
+            embedding_model=model,
+            is_indexed=is_indexed
         )
         return await self.chunk_repository.create(chunk)
+    
+    async def update_chunk_text(self, chunk_id: UUID, text: str) -> Optional[Chunk]:
+        """Update chunk text and automatically regenerate embedding."""
+        # Check if chunk exists
+        chunk = await self.chunk_repository.get_by_id(chunk_id)
+        if not chunk:
+            return None
+        
+        # Generate new embedding for updated text
+        embedding, dimension, model, is_indexed = await self._generate_embedding_for_chunk(text)
+        
+        # Update with new text and embedding
+        updates = {
+            "text": text,
+            "text_length": len(text),
+            "embedding": embedding,
+            "embedding_dimension": dimension,
+            "embedding_model": model,
+            "is_indexed": is_indexed
+        }
+        
+        return await self.chunk_repository.update(chunk_id, updates)
+    
+    async def regenerate_embedding(self, chunk_id: UUID) -> Optional[Chunk]:
+        """Regenerate embedding for existing chunk text."""
+        chunk = await self.chunk_repository.get_by_id(chunk_id)
+        if not chunk:
+            return None
+        
+        # Generate new embedding using current text
+        embedding, dimension, model, is_indexed = await self._generate_embedding_for_chunk(chunk.text)
+        
+        updates = {
+            "embedding": embedding,
+            "embedding_dimension": dimension,
+            "embedding_model": model,
+            "is_indexed": is_indexed
+        }
+        
+        return await self.chunk_repository.update(chunk_id, updates)
     
     async def get_chunk(self, chunk_id: UUID) -> Optional[Chunk]:
         """Get a chunk by ID."""
@@ -78,19 +129,16 @@ class ChunkService:
         return await self.chunk_repository.count()
     
     async def update_chunk(self, chunk_id: UUID, **updates) -> Optional[Chunk]:
-        """Update a chunk."""
+        """Update a chunk (for non-text updates)."""
         return await self.chunk_repository.update(chunk_id, updates)
     
     async def delete_chunk(self, chunk_id: UUID) -> Optional[dict]:
         """Delete a chunk and return success message."""
-        # Check if chunk exists
         chunk = await self.chunk_repository.get_by_id(chunk_id)
         if not chunk:
             return None
         
-        # Delete chunk
         deleted = await self.chunk_repository.delete(chunk_id)
-        
         if not deleted:
             return None
         
