@@ -20,8 +20,10 @@ class Settings(BaseSettings):
     # CORS
     allowed_hosts: list[str] = Field(["*"], env="ALLOWED_HOSTS")
     
-    # Optional
+    # Embeddings
     cohere_api_key: str = Field("", env="COHERE_API_KEY")
+    embedding_model: str = Field("embed-english-v3.0", env="EMBEDDING_MODEL")
+    embedding_dimension: int = Field(1024, env="EMBEDDING_DIMENSION")
     
     class Config:
         env_file = ".env"

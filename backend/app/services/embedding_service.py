@@ -16,7 +16,7 @@ async def generate_embeddings(texts: List[str]) -> List[List[float]]:
     
     if not settings.cohere_api_key:
         # Simple mock for development
-        return [[0.1] * 1024 for _ in texts]
+        return [[0.1] * settings.embedding_dimension for _ in texts]
     
     async with httpx.AsyncClient() as client:
         response = await client.post(
@@ -27,7 +27,7 @@ async def generate_embeddings(texts: List[str]) -> List[List[float]]:
             },
             json={
                 "texts": texts,
-                "model": "embed-english-v3.0",
+                "model": settings.embedding_model,
                 "embedding_types": ["float"],
                 "input_type": "search_document"
             },
@@ -40,10 +40,10 @@ async def generate_embeddings(texts: List[str]) -> List[List[float]]:
         else:
             logger.error(f"Cohere API error: {response.status_code}")
             # Return mock embeddings on error
-            return [[0.1] * 1024 for _ in texts]
+            return [[0.1] * settings.embedding_dimension for _ in texts]
 
 
 async def generate_query_embedding(query: str) -> List[float]:
     """Generate embedding for search query."""
     embeddings = await generate_embeddings([query])
-    return embeddings[0] if embeddings else [0.1] * 1024 
+    return embeddings[0] if embeddings else [0.1] * settings.embedding_dimension 
