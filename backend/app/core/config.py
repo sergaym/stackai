@@ -3,33 +3,32 @@ Simple application configuration.
 """
 
 from functools import lru_cache
-from pydantic import Field
+from pydantic import Field, ConfigDict
 from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
     """Application settings."""
     
+    model_config = ConfigDict(env_file=".env")
+    
     # Application
-    environment: str = Field("development", env="ENVIRONMENT")
-    debug: bool = Field(False, env="DEBUG")
+    environment: str = Field(default="development")
+    debug: bool = Field(default=False)
     
     # Database
-    database_url: str = Field(..., env="DATABASE_URL")
+    database_url: str = Field(...)
     
     # CORS
-    allowed_hosts: list[str] = Field(["*"], env="ALLOWED_HOSTS")
+    allowed_hosts: list[str] = Field(default=["*"])
     
     # Embeddings
-    cohere_api_key: str = Field("", env="COHERE_API_KEY")
-    embedding_model: str = Field("embed-english-v3.0", env="EMBEDDING_MODEL")
-    embedding_dimension: int = Field(1024, env="EMBEDDING_DIMENSION")
+    cohere_api_key: str = Field(default="")
+    embedding_model: str = Field(default="embed-english-v3.0")
+    embedding_dimension: int = Field(default=1024)
     
     # Vector Index
-    default_vector_index: str = Field("hnsw", env="DEFAULT_VECTOR_INDEX")
-    
-    class Config:
-        env_file = ".env"
+    default_vector_index: str = Field(default="hnsw")
 
 
 @lru_cache()
