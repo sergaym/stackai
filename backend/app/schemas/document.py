@@ -48,12 +48,6 @@ class DocumentResponse(BaseModel):
     is_processed: bool = Field(..., description="Whether document is processed")
     processing_status: str = Field(..., description="Processing status")
 
-    class Config:
-        json_encoders = {
-            datetime: lambda v: v.isoformat(),
-            UUID: lambda v: str(v),
-        }
-
 
 class DocumentListResponse(BaseModel):
     """Response schema for document listing."""
@@ -67,10 +61,4 @@ class DocumentListResponse(BaseModel):
 class DocumentDeleteResponse(BaseModel):
     """Response schema for document deletion operations."""
     
-    message: str = Field(..., description="Deletion confirmation message")
-    
-    class Config:
-        json_encoders = {
-            datetime: lambda v: v.isoformat(),
-            UUID: lambda v: str(v),
-        } 
+    message: str = Field(..., description="Deletion confirmation message") 
