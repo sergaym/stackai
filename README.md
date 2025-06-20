@@ -88,11 +88,11 @@ backend/app/
 - **Production Ready**: Battle-tested for high-traffic applications with proper connection pooling
 - **Rich Data Types**: Native JSON support for metadata while maintaining relational benefits
 
-### Future Persistence Strategy
-- **S3 Integration**: Store vector indexes and metadata in AWS S3
-- **Checkpoint System**: Periodic state snapshots for recovery
-- **Incremental Updates**: Delta-based synchronization for efficiency
-- **Multi-node Consistency**: Leader-follower architecture for scaling
+### Vector Index Persistence (Future)
+- **S3 Integration**: Store serialized vector indexes in AWS S3
+- **Checkpoint System**: Periodic index snapshots for faster startup
+- **Incremental Updates**: Delta-based index synchronization
+- **Multi-node Consistency**: Distributed index management
 
 ## 🚀 Quick Start Guide
 
@@ -254,19 +254,7 @@ Semantic Chunking → Embedding Generation → Index Update
 ```
 
 ### 4. Alternative Embedding Models
-**Goal**: Optimize embedding quality and reduce external dependencies
-
-**Research Areas**:
-- **Open Source Models**: SentenceTransformers, E5, BGE
-- **Domain-Specific Models**: Code, scientific papers, legal documents
-- **Multilingual Support**: mBERT, XLM-R variants
-- **Efficiency Optimization**: Model distillation, quantization
-
-**Evaluation Framework**:
-- Benchmark against standard datasets (MTEB, BEIR)
-- Domain-specific evaluation metrics
-- Latency vs accuracy trade-offs
-- Cost analysis (API vs self-hosted)
+Evaluate open-source models (SentenceTransformers, E5, BGE) and domain-specific embeddings for improved performance.
 
 ### 5. Production Enhancements
 
