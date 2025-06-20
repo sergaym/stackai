@@ -9,6 +9,7 @@ from uuid import UUID
 
 from sqlalchemy import select, update, delete, func
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.db.models import Document
 
@@ -24,11 +25,17 @@ class AsyncDocumentRepository:
         self.session.add(document)
         await self.session.flush()
         await self.session.refresh(document)
-        return document
+        
+        # Re-fetch with relationships loaded
+        return await self.get_by_id(document.id)
     
     async def get_by_id(self, document_id: UUID) -> Optional[Document]:
         """Get document by ID."""
-        stmt = select(Document).where(Document.id == document_id)
+        stmt = (
+            select(Document)
+            .options(selectinload(Document.chunks))
+            .where(Document.id == document_id)
+        )
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
     
@@ -36,6 +43,7 @@ class AsyncDocumentRepository:
         """Get all documents for a library."""
         stmt = (
             select(Document)
+            .options(selectinload(Document.chunks))
             .where(Document.library_id == library_id)
             .offset(skip)
             .limit(limit)
@@ -48,6 +56,7 @@ class AsyncDocumentRepository:
         """Get all documents."""
         stmt = (
             select(Document)
+            .options(selectinload(Document.chunks))
             .offset(skip)
             .limit(limit)
             .order_by(Document.created_at.desc())
@@ -80,32 +89,15 @@ class AsyncDocumentRepository:
             .returning(Document)
         )
         result = await self.session.execute(stmt)
-        return result.scalar_one_or_none()
+        updated_document = result.scalar_one_or_none()
+        
+        if updated_document:
+            # Re-fetch with relationships loaded
+            return await self.get_by_id(document_id)
+        return None
     
     async def delete(self, document_id: UUID) -> bool:
         """Delete document by ID."""
         stmt = delete(Document).where(Document.id == document_id)
         result = await self.session.execute(stmt)
-        return result.rowcount > 0
-    
-    async def increment_chunk_count(self, document_id: UUID) -> Optional[Document]:
-        """Increment chunk count."""
-        stmt = (
-            update(Document)
-            .where(Document.id == document_id)
-            .values(chunk_count=Document.chunk_count + 1)
-            .returning(Document)
-        )
-        result = await self.session.execute(stmt)
-        return result.scalar_one_or_none()
-    
-    async def decrement_chunk_count(self, document_id: UUID) -> Optional[Document]:
-        """Decrement chunk count."""
-        stmt = (
-            update(Document)
-            .where(Document.id == document_id)
-            .values(chunk_count=Document.chunk_count - 1)
-            .returning(Document)
-        )
-        result = await self.session.execute(stmt)
-        return result.scalar_one_or_none() 
+        return result.rowcount > 0 
