@@ -103,7 +103,7 @@ backend/app/
 ### 1. Clone and Setup
 ```bash
 git clone <repository-url>
-cd stackai/backend
+cd backend
 ```
 
 ### 2. Environment Configuration
@@ -121,6 +121,8 @@ EMBEDDING_DIMENSION=1024
 DEFAULT_VECTOR_INDEX=hnsw
 ```
 
+*Ask me for the DATABASE_URL, otherwise you will need to initialize it*
+
 ### 3. Run with Docker Compose
 ```bash
 docker-compose up --build
@@ -137,10 +139,7 @@ docker-compose up --build
 python demo_library_creation.py
 ```
 
-This creates a "Machine Learning Fundamentals" library with:
-- 3 documents (Supervised Learning, Neural Networks, Data Preprocessing)
-- 36 total chunks with educational content
-- Automatic embedding generation and indexing
+This creates a "Machine Learning Fundamentals" library with 3 documents and 36 chunks with automatic embedding generation.
 
 ## 🔌 API Endpoints
 
@@ -183,8 +182,8 @@ This creates a "Machine Learning Fundamentals" library with:
 
 ### Test Coverage
 ```bash
-# Run comprehensive tests
-cd backend/code_testing/
+# Run comprehensive tests (from backend directory)
+cd code_testing/
 bash run_comprehensive_test.sh
 
 # Individual test suites
