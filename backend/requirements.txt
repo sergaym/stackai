@@ -9,3 +9,5 @@ asyncpg==0.29.0           # async PostgreSQL driver
 sqlalchemy[asyncio]==2.0.23
 numpy==1.25.2             # vector math
 python-dotenv==1.0.0      # load .env in local dev
+
+aiohttp>=3.8.0 # for the demo_library_creation.py script
