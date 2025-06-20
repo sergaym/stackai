@@ -10,10 +10,11 @@ from app.core.config import settings
 from app.db.base import Base
 
 
-# Create async engine
+# Create async engine with connection validation
 engine = create_async_engine(
     settings.database_url,
     echo=settings.debug,
+    pool_pre_ping=True,  # Fix stale connections - validates before use
 )
 
 # Create session factory
