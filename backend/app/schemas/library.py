@@ -3,7 +3,7 @@ Library request/response schemas.
 """
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Union
+from typing import Dict, List, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -41,12 +41,6 @@ class LibraryResponse(BaseModel):
     document_count: int = Field(..., description="Number of documents in library")
     chunk_count: int = Field(..., description="Number of chunks in library")
 
-    class Config:
-        json_encoders = {
-            datetime: lambda v: v.isoformat(),
-            UUID: lambda v: str(v),
-        }
-
 
 class LibraryListResponse(BaseModel):
     """Response schema for library listing."""
@@ -60,10 +54,4 @@ class LibraryListResponse(BaseModel):
 class LibraryDeleteResponse(BaseModel):
     """Response schema for library deletion operations."""
     
-    message: str = Field(..., description="Deletion confirmation message")
-    
-    class Config:
-        json_encoders = {
-            datetime: lambda v: v.isoformat(),
-            UUID: lambda v: str(v),
-        } 
+    message: str = Field(..., description="Deletion confirmation message") 

@@ -49,12 +49,6 @@ class ChunkResponse(BaseModel):
     # Status
     is_indexed: bool = Field(..., description="Whether chunk is indexed")
 
-    class Config:
-        json_encoders = {
-            datetime: lambda v: v.isoformat(),
-            UUID: lambda v: str(v),
-        }
-
 
 class ChunkListResponse(BaseModel):
     """Response schema for chunk listing."""
@@ -68,10 +62,4 @@ class ChunkListResponse(BaseModel):
 class ChunkDeleteResponse(BaseModel):
     """Response schema for chunk deletion operations."""
     
-    message: str = Field(..., description="Deletion confirmation message")
-    
-    class Config:
-        json_encoders = {
-            datetime: lambda v: v.isoformat(),
-            UUID: lambda v: str(v),
-        } 
+    message: str = Field(..., description="Deletion confirmation message") 

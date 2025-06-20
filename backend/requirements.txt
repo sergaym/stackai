@@ -1,13 +1,20 @@
 # --- Runtime Dependencies ---
+# Updated for Python 3.12 compatibility with pre-built wheels
+
 fastapi==0.115.12
 uvicorn[standard]==0.24.0
 pydantic==2.5.0
 pydantic-settings==2.1.0
 
 httpx==0.25.2            # outbound HTTP requests (Cohere API)
-asyncpg==0.29.0           # async PostgreSQL driver
+asyncpg==0.29.0          # async PostgreSQL driver
 sqlalchemy[asyncio]==2.0.23
-numpy==1.25.2             # vector math
-python-dotenv==1.0.0      # load .env in local dev
+numpy>=1.26.0            # vector math (updated for Python 3.12)
+python-dotenv==1.0.0     # load .env in local dev
 
-aiohttp>=3.8.0 # for the demo_library_creation.py script
+aiohttp>=3.8.0           # for the demo_library_creation.py script
+
+# --- Testing Dependencies ---
+pytest==7.4.4
+pytest-asyncio==0.23.2
+pytest-mock==3.12.0
