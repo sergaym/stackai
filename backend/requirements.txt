@@ -13,3 +13,8 @@ numpy>=1.26.0            # vector math (updated for Python 3.12)
 python-dotenv==1.0.0     # load .env in local dev
 
 aiohttp>=3.8.0           # for the demo_library_creation.py script
+
+# --- Testing Dependencies ---
+pytest==7.4.4
+pytest-asyncio==0.23.2
+pytest-mock==3.12.0
