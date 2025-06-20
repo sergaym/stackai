@@ -13,6 +13,8 @@ from app.repositories.async_library_repository import AsyncLibraryRepository
 from app.services.chunk_service import ChunkService
 from app.services.document_service import DocumentService
 from app.services.library_service import LibraryService
+from app.services.index_service import IndexService
+from app.services.search_service import SearchService
 
 
 # Database dependency
@@ -36,11 +38,31 @@ async def get_document_service(db: AsyncSession = Depends(get_db)) -> DocumentSe
     return DocumentService(document_repository, library_repository)
 
 
-async def get_chunk_service(db: AsyncSession = Depends(get_db)) -> ChunkService:
+def get_index_service() -> IndexService:
+    """Get index service (singleton)."""
+    if not hasattr(get_index_service, "_instance"):
+        get_index_service._instance = IndexService()
+    return get_index_service._instance
+
+
+async def get_search_service(
+    index_service: IndexService = Depends(get_index_service),
+    db: AsyncSession = Depends(get_db)
+) -> SearchService:
+    """Get search service instance."""
+    chunk_repository = AsyncChunkRepository(db)
+    document_repository = AsyncDocumentRepository(db)
+    return SearchService(index_service, chunk_repository, document_repository)
+
+
+async def get_chunk_service(
+    db: AsyncSession = Depends(get_db),
+    index_service: IndexService = Depends(get_index_service)
+) -> ChunkService:
     """Get chunk service instance."""
     chunk_repository = AsyncChunkRepository(db)
     document_repository = AsyncDocumentRepository(db)
     library_repository = AsyncLibraryRepository(db)
-    return ChunkService(chunk_repository, document_repository, library_repository)
+    return ChunkService(chunk_repository, document_repository, library_repository, index_service)
 
  
