@@ -45,63 +45,78 @@ def create_application() -> FastAPI:
     @app.on_event("startup")
     async def startup_reindex():
         """
-        Simple startup reindexing following KISS principles.
-        Only reindexes existing chunks with embeddings.
+        Startup reindexing. Uses default algorithm for simplicity.
+        Reindexes existing chunks with embeddings.
+        TODO: Remove this once we have a persistent reindexing mechanism.
+        TODO: Index each library separately with the algorithm that better suits it.
         """
         try:
-            from app.core.dependencies import get_index_service, get_db
+            from app.core.dependencies import get_index_service
+            from app.db.database import get_db_session
             from app.repositories.async_chunk_repository import AsyncChunkRepository
             from app.repositories.async_library_repository import AsyncLibraryRepository
             
-            # Get services
+            print("🔄 Starting startup reindexing...")
+            
+            # Get services (singleton pattern)
             index_service = get_index_service()
             
-            # Get database session
-            async for db_session in get_db():
-                try:
-                    chunk_repo = AsyncChunkRepository(db_session)
-                    library_repo = AsyncLibraryRepository(db_session)
-                    
-                    # Get all libraries
-                    libraries = await library_repo.get_all(limit=1000)  # Reasonable limit
-                    
-                    total_reindexed = 0
-                    for library in libraries:
-                        # Get indexed chunks for this library
-                        chunks = await chunk_repo.get_by_library_id(library.id, limit=10000)
+            # Simple database session handling
+            async for db_session in get_db_session():
+                chunk_repo = AsyncChunkRepository(db_session)
+                library_repo = AsyncLibraryRepository(db_session)
+                
+                # Get libraries with reasonable pagination
+                libraries = await library_repo.get_all(limit=100)
+                if not libraries:
+                    print("ℹ️  No libraries found for reindexing")
+                    return
+                
+                total_reindexed = 0
+                
+                # Process each library independently (fault isolation)
+                for library in libraries:
+                    try:
+                        # Get chunks with embeddings for this library
+                        chunks = await chunk_repo.get_by_library_id(library.id, limit=1000)
                         indexed_chunks = [c for c in chunks if c.is_indexed and c.embedding]
                         
                         if not indexed_chunks:
                             continue
-                            
+                        
                         print(f"🔄 Reindexing {len(indexed_chunks)} chunks for library: {library.name}")
                         
-                        # Add chunks to index
+                        # Add chunks to index (production efficiency - single algorithm)
                         for chunk in indexed_chunks:
-                            await index_service.add_chunk(
+                            success = await index_service.add_chunk(
                                 library_id=library.id,
                                 chunk_id=chunk.id,
                                 embedding=chunk.embedding,
-                                metadata={"text_length": chunk.text_length}
+                                metadata={"text_length": chunk.text_length},
+                                build_all_algorithms=False  # Production: only default algorithm
                             )
-                            total_reindexed += 1
+                            if success:
+                                total_reindexed += 1
                         
-                        # Build the index for this library
+                        # Build indexes for this library
                         await index_service.build_library_index(library.id)
-                    
-                    if total_reindexed > 0:
-                        print(f"✅ Startup reindexing complete: {total_reindexed} chunks across {len(libraries)} libraries")
-                    else:
-                        print("ℹ️  No existing chunks to reindex")
-                    
-                    break  # Exit the async generator
-                    
-                except Exception as e:
-                    print(f"⚠️  Startup reindexing failed: {e}")
-                    break
-                    
+                        
+                    except Exception as e:
+                        # Isolated error handling - continue with other libraries
+                        print(f"⚠️  Failed to reindex library {library.name}: {e}")
+                        continue
+                
+                if total_reindexed > 0:
+                    print(f"✅ Startup reindexing complete: {total_reindexed} chunks across {len(libraries)} libraries")
+                else:
+                    print("ℹ️  No chunks needed reindexing")
+                
+                break  # Exit after successful processing
+                
         except Exception as e:
-            print(f"⚠️  Could not initialize startup reindexing: {e}")
+            # Don't crash the app on reindexing failure
+            print(f"⚠️  Startup reindexing failed: {e}")
+            print("🚀 API starting without reindexing...")
 
     # Include API routes
     app.include_router(api_router, prefix="/api/v1")
