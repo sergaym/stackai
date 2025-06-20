@@ -25,6 +25,9 @@ class Settings(BaseSettings):
     embedding_model: str = Field("embed-english-v3.0", env="EMBEDDING_MODEL")
     embedding_dimension: int = Field(1024, env="EMBEDDING_DIMENSION")
     
+    # Vector Index
+    default_vector_index: str = Field("hnsw", env="DEFAULT_VECTOR_INDEX")
+    
     class Config:
         env_file = ".env"
 
