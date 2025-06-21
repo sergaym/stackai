@@ -2,20 +2,15 @@
  * Application types
  */
 
-// ==========================================
-// FILE MANAGEMENT
-// ==========================================
-
-export interface FileItem {
-  id: string;
-  name: string;
-  type: 'file' | 'folder';
-  size?: number;
-  modifiedDate: string;
-  status: 'resource' | 'pending' | 'indexing' | 'indexed' | 'error';
-  isExpanded?: boolean;
-  children?: FileItem[];
-}
+// Re-export API types for consistency
+export type {
+  FileResource,
+  ResourceType,
+  ResourceStatus,
+  Connection,
+  PaginatedResponse,
+  KnowledgeBase
+} from '@/lib/api/stackai-client'
 
 // ==========================================
 // INTEGRATIONS
@@ -58,10 +53,4 @@ export interface ApiResponse<T> {
   data: T;
   success: boolean;
   message?: string;
-}
-
-export interface PaginatedResponse<T> {
-  data: T[];
-  next_cursor?: string;
-  has_more: boolean;
 }

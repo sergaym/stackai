@@ -15,10 +15,10 @@ const integrations: Integration[] = [
   { id: 'text', name: 'Text', icon: 'Edit3' },
   { id: 'confluence', name: 'Confluence', icon: '/confluence_icon.svg' },
   { id: 'notion', name: 'Notion', icon: '/notion_icon.svg' },
-  { id: 'googledrive', name: 'Google Drive', icon: '/google_drive_icon.svg.png', isActive: true },
+  { id: 'googledrive', name: 'Google Drive', icon: '/google_drive_icon.png', isActive: true },
   { id: 'onedrive', name: 'OneDrive', icon: '/onedrive_icon.svg' },
   { id: 'sharepoint', name: 'SharePoint', icon: '/sharepoint_icon.png' },
-  { id: 'slack', name: 'Slack', icon: '/slack_icon.svg.png' }
+  { id: 'slack', name: 'Slack', icon: '/slack_icon.png' }
 ];
 
 export function FilePickerDialog({ isOpen, onClose }: FilePickerDialogProps) {
@@ -44,8 +44,8 @@ export function FilePickerDialog({ isOpen, onClose }: FilePickerDialogProps) {
   return (
     <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-5xl h-[80vh] flex overflow-hidden">
-        {/* Sidebar - Full Height */}
-        <div className="w-64 bg-gray-50 border-r border-gray-200 flex flex-col">
+        {/* Sidebar - Fixed Width and Height */}
+        <div className="w-56 bg-gray-50 border-r border-gray-200 flex flex-col flex-shrink-0">
           <div className="px-3 py-3 border-b border-gray-200 flex items-center gap-2">
             <Button 
               onClick={onClose}
@@ -55,12 +55,12 @@ export function FilePickerDialog({ isOpen, onClose }: FilePickerDialogProps) {
             >
               <X className="h-4 w-4" />
             </Button>
-            <h2 className="text-sm font-medium text-gray-900">Integrations</h2>
+            <h2 className="text-sm font-semibold text-gray-900">Integrations</h2>
           </div>
 
           {/* Integrations Label */}
           <div className="px-3 pt-4 pb-2">
-            <div className="text-xs font-medium text-gray-400 uppercase tracking-wide">
+            <div className="text-xs font-semibold text-gray-400 text-left">
               Integrations
             </div>
           </div>
@@ -91,9 +91,9 @@ export function FilePickerDialog({ isOpen, onClose }: FilePickerDialogProps) {
         </div>
 
         {/* Right Side - Content + Footer */}
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col min-w-0">
           {/* Main Content */}
-          <div className="flex-1 overflow-hidden">
+          <div className="flex-1 overflow-y-auto min-h-0">
             <IntegrationContent
               integration={integrations.find(i => i.id === activeIntegration) || integrations[0]}
               selectedItems={selectedItems}
