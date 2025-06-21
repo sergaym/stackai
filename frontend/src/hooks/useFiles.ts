@@ -3,7 +3,7 @@
  */
 
 import useSWR from 'swr'
-import { useStackAI } from './useStackAI'
+import { useStackAI } from '@/contexts/stackai-context'
 import type { FileResource } from '@/lib/api/stackai-client'
 
 interface UseFilesOptions {
