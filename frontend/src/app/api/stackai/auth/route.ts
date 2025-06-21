@@ -11,6 +11,8 @@ const DEFAULT_PASSWORD = process.env.STACKAI_PASSWORD!
 
 export async function POST(request: NextRequest) {
   try {
+    api.info('POST /api/stackai/auth - Authentication request received')
+    
     // Allow override of credentials via request body, but fallback to env vars
     const body = await request.json().catch(() => ({}))
     const email = body.email || DEFAULT_EMAIL
@@ -103,6 +105,11 @@ export async function POST(request: NextRequest) {
     const connections = await connectionsResponse.json()
     auth.info('Got connections', { count: connections.length })
 
+    api.info('POST /api/stackai/auth - Authentication successful', { 
+      orgId: orgData.org_id, 
+      connectionsCount: connections.length 
+    })
+
     return NextResponse.json({
       success: true,
       accessToken,
@@ -113,6 +120,7 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     auth.error('Authentication error', { error })
+    api.error('POST /api/stackai/auth - Internal server error', { error })
     return NextResponse.json(
       { error: 'Internal server error during authentication' },
       { status: 500 }
