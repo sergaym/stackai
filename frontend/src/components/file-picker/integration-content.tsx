@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import { Search, ChevronDown, RefreshCw, MoreHorizontal, Calendar, FileText, HardDrive, Check, CheckCircle, Clock, XCircle } from 'lucide-react';
+import { Search, ChevronDown, RefreshCw, MoreHorizontal, Calendar, FileText, HardDrive, Check } from 'lucide-react';
 import { 
   FolderIcon, 
   DocumentIcon, 
@@ -30,9 +30,9 @@ import { IntegrationIcon } from '@/components/ui/integration-icon';
 import { useStackAI } from '@/contexts/stackai-context';
 import { useFiles } from '@/hooks/useFiles';
 import { useFileActions } from '@/hooks/useFileActions';
-import { getFileIcon, getFileName, filterFiles, sortFiles, type SortOption, type SortDirection } from '@/lib/utils';
+import { getFileName, filterFiles, sortFiles, type SortOption, type SortDirection } from '@/lib/utils';
 import { FileItem } from './FileItem';
-import { ResourceType, ResourceStatus, type FileResource } from '@/lib/api/stackai-client';
+import { ResourceType, type FileResource } from '@/lib/api/stackai-client';
 import type { Integration } from '@/types';
 import { toast } from 'sonner';
 
@@ -360,7 +360,7 @@ function GoogleDriveContent({ selectedItems, onItemSelect, searchTerm, onSearchC
         {/* Horizontal Separator */}
         <div className="border-t border-gray-200"></div>
 
-        {/* Bottom Row: Sort/Filter on left, Search on right */}
+        {/* Bottom Row: Sort/Filter on left, Index/Search on right */}
         <div className="flex items-center justify-between">
           {/* Left side: Sort + Filter */}
           <div className="flex items-center gap-2">
@@ -457,16 +457,33 @@ function GoogleDriveContent({ selectedItems, onItemSelect, searchTerm, onSearchC
             </DropdownMenu>
           </div>
 
-          {/* Right side: Compact Search */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input
-              type="text"
-              placeholder="Search..."
-              value={searchTerm}
-              onChange={(e) => onSearchChange(e.target.value)}
-              className="pl-10 w-48 h-8 text-sm bg-gray-50 border-0 rounded-md focus:bg-white focus:ring-0 focus:outline-none transition-colors"
-            />
+          {/* Right side: Index + Search */}
+          <div className="flex items-center gap-2">
+            {/* Index Selected Files Button */}
+            {selectedItems.length > 0 && (
+              <Button
+                onClick={() => {
+                  const selectedFiles = processedFiles.filter(f => selectedItems.includes(f.resource_id));
+                  indexFiles(selectedItems, selectedFiles);
+                }}
+                size="sm"
+                className="h-8 px-3 text-xs bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                Index {selectedItems.length} file{selectedItems.length !== 1 ? 's' : ''}
+              </Button>
+            )}
+            
+            {/* Compact Search */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                type="text"
+                placeholder="Search..."
+                value={searchTerm}
+                onChange={(e) => onSearchChange(e.target.value)}
+                className="pl-10 w-48 h-8 text-sm bg-gray-50 border-0 rounded-md focus:bg-white focus:ring-0 focus:outline-none transition-colors"
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -660,41 +677,7 @@ function EmptyState() {
   );
 }
 
-// Helper function to get indexing status display
-function getIndexingStatus(status: ResourceStatus) {
-  switch (status) {
-    case ResourceStatus.INDEXED:
-      return {
-        icon: <CheckCircle className="h-4 w-4 text-green-500" />,
-        label: 'Indexed',
-        color: 'text-green-600',
-        bgColor: 'bg-green-50'
-      };
-    case ResourceStatus.INDEXING:
-    case ResourceStatus.PENDING:
-      return {
-        icon: <Clock className="h-4 w-4 text-yellow-500" />,
-        label: 'Indexing...',
-        color: 'text-yellow-600',
-        bgColor: 'bg-yellow-50'
-      };
-    case ResourceStatus.ERROR:
-      return {
-        icon: <XCircle className="h-4 w-4 text-red-500" />,
-        label: 'Error',
-        color: 'text-red-600',
-        bgColor: 'bg-red-50'
-      };
-    case ResourceStatus.RESOURCE:
-    default:
-      return {
-        icon: <div className="h-4 w-4 rounded-full border-2 border-gray-300" />,
-        label: 'Not indexed',
-        color: 'text-gray-500',
-        bgColor: 'bg-gray-50'
-      };
-  }
-}
+
 
 
 
