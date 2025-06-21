@@ -1,27 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { api } from '@/lib/logger'
 
 const BACKEND_URL = process.env.STACKAI_BACKEND_URL!
 
 export async function POST(request: NextRequest) {
   try {
-    const authHeader = request.headers.get('authorization')
-    
-    if (!authHeader) {
+    const accessToken = request.headers.get('x-access-token')
+
+    if (!BACKEND_URL) {
+      api.error('Missing STACKAI_BACKEND_URL environment variable')
       return NextResponse.json(
-        { error: 'Authorization header required' },
-        { status: 401 }
+        { error: 'Server configuration error: Missing backend URL' },
+        { status: 500 }
       )
+    }
+
+    if (!accessToken) {
+      return NextResponse.json({ error: 'Access token required' }, { status: 401 })
     }
 
     const body = await request.json()
     
-    console.log('🏗️ Server: Creating knowledge base:', body.name)
+    // Forward the request to Stack AI API
+    const url = `${BACKEND_URL}/knowledge_bases`
+    api.debug('Creating knowledge base via API', { url })
 
-    // Create knowledge base using Stack AI API
-    const response = await fetch(`${BACKEND_URL}/knowledge_bases`, {
+    const response = await fetch(url, {
       method: 'POST',
       headers: {
-        'Authorization': authHeader,
+        'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(body),
@@ -29,22 +36,22 @@ export async function POST(request: NextRequest) {
 
     if (!response.ok) {
       const errorText = await response.text()
-      console.error('❌ Server: KB creation failed:', errorText)
+      api.error('Knowledge base creation failed', { error: errorText, status: response.status })
       return NextResponse.json(
         { error: `Failed to create knowledge base: ${response.statusText}` },
         { status: response.status }
       )
     }
 
-    const result = await response.json()
-    console.log('✅ Server: Knowledge base created:', result.knowledge_base_id)
+    const data = await response.json()
+    api.info('Knowledge base created', { id: data.knowledge_base_id })
 
-    return NextResponse.json(result)
+    return NextResponse.json(data)
 
   } catch (error) {
-    console.error('❌ Server: Knowledge base creation error:', error)
+    api.error('Knowledge base creation error', { error })
     return NextResponse.json(
-      { error: 'Internal server error during knowledge base creation' },
+      { error: 'Internal server error while creating knowledge base' },
       { status: 500 }
     )
   }

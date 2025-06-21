@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { api } from '@/lib/logger'
 
 const BACKEND_URL = process.env.STACKAI_BACKEND_URL!
 
@@ -11,7 +12,7 @@ export async function GET(request: NextRequest) {
 
     // Validate required environment variables
     if (!BACKEND_URL) {
-      console.error('❌ Server: Missing STACKAI_BACKEND_URL environment variable')
+      api.error('Missing STACKAI_BACKEND_URL environment variable')
       return NextResponse.json(
         { error: 'Server configuration error: Missing backend URL' },
         { status: 500 }
@@ -33,7 +34,7 @@ export async function GET(request: NextRequest) {
       url += `?resource_id=${parentResourceId}`
     }
 
-    console.log('📡 Server: Fetching files from:', url)
+    api.debug('Fetching files from API', { url, connectionId, parentResourceId })
 
     const response = await fetch(url, {
       headers: {
@@ -44,7 +45,7 @@ export async function GET(request: NextRequest) {
 
     if (!response.ok) {
       const errorText = await response.text()
-      console.error('❌ Server: Files fetch failed:', errorText)
+      api.error('Files fetch failed', { error: errorText, status: response.status })
       return NextResponse.json(
         { error: `Failed to fetch files: ${response.statusText}` },
         { status: response.status }
@@ -52,12 +53,12 @@ export async function GET(request: NextRequest) {
     }
 
     const data = await response.json()
-    console.log(`✅ Server: Fetched ${data.data?.length || 0} files`)
+    api.info('Fetched files', { count: data.data?.length || 0 })
 
     return NextResponse.json(data)
 
   } catch (error) {
-    console.error('❌ Server: Files fetch error:', error)
+    api.error('Files fetch error', { error })
     return NextResponse.json(
       { error: 'Internal server error while fetching files' },
       { status: 500 }

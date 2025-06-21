@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { api } from '@/lib/logger'
 
 const BACKEND_URL = process.env.STACKAI_BACKEND_URL!
 
@@ -7,44 +8,50 @@ export async function POST(
   { params }: { params: Promise<{ id: string; orgId: string }> }
 ) {
   try {
-    const authHeader = request.headers.get('authorization')
-    
-    if (!authHeader) {
+    const { id: knowledgeBaseId, orgId } = await params
+    const accessToken = request.headers.get('x-access-token')
+
+    if (!BACKEND_URL) {
+      api.error('Missing STACKAI_BACKEND_URL environment variable')
       return NextResponse.json(
-        { error: 'Authorization header required' },
-        { status: 401 }
+        { error: 'Server configuration error: Missing backend URL' },
+        { status: 500 }
       )
     }
 
-    const { id: knowledgeBaseId, orgId } = await params
-    
-    console.log('🔄 Server: Syncing knowledge base:', knowledgeBaseId)
+    if (!accessToken) {
+      return NextResponse.json({ error: 'Access token required' }, { status: 401 })
+    }
 
-    // Trigger sync using Stack AI API
-    const response = await fetch(`${BACKEND_URL}/knowledge_bases/sync/trigger/${knowledgeBaseId}/${orgId}`, {
+    // Forward the request to Stack AI API - using GET as per notebook
+    const url = `${BACKEND_URL}/knowledge_bases/sync/trigger/${knowledgeBaseId}/${orgId}`
+    api.debug('Triggering KB sync via API', { url, knowledgeBaseId, orgId })
+
+    const response = await fetch(url, {
       method: 'GET',
       headers: {
-        'Authorization': authHeader,
+        'Authorization': `Bearer ${accessToken}`,
       },
     })
 
     if (!response.ok) {
       const errorText = await response.text()
-      console.error('❌ Server: KB sync failed:', errorText)
+      api.error('Knowledge base sync failed', { error: errorText, status: response.status })
       return NextResponse.json(
         { error: `Failed to sync knowledge base: ${response.statusText}` },
         { status: response.status }
       )
     }
 
-    console.log('✅ Server: Knowledge base sync triggered')
+    const data = await response.text()
+    api.info('Knowledge base sync triggered', { knowledgeBaseId })
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ success: true, message: data })
 
   } catch (error) {
-    console.error('❌ Server: Knowledge base sync error:', error)
+    api.error('Knowledge base sync error', { error })
     return NextResponse.json(
-      { error: 'Internal server error during knowledge base sync' },
+      { error: 'Internal server error while syncing knowledge base' },
       { status: 500 }
     )
   }

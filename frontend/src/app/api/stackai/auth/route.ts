@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { auth, api } from '@/lib/logger'
 
 const SUPABASE_AUTH_URL = process.env.STACKAI_SUPABASE_AUTH_URL!
 const ANON_KEY = process.env.STACKAI_ANON_KEY!
@@ -15,11 +16,11 @@ export async function POST(request: NextRequest) {
     const email = body.email || DEFAULT_EMAIL
     const password = body.password || DEFAULT_PASSWORD
 
-    console.log('🔐 Server: Starting Stack AI authentication for:', email)
+    auth.info('Starting Stack AI authentication', { email })
 
     // Validate required environment variables
     if (!SUPABASE_AUTH_URL || !ANON_KEY || !BACKEND_URL) {
-      console.error('❌ Server: Missing required environment variables')
+      auth.error('Missing required environment variables')
       return NextResponse.json(
         { error: 'Server configuration error: Missing required environment variables' },
         { status: 500 }
@@ -27,7 +28,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!email || !password) {
-      console.error('❌ Server: Missing credentials')
+      auth.error('Missing credentials')
       return NextResponse.json(
         { error: 'Email and password are required' },
         { status: 400 }
@@ -50,7 +51,7 @@ export async function POST(request: NextRequest) {
 
     if (!authResponse.ok) {
       const errorText = await authResponse.text()
-      console.error('❌ Server: Auth failed:', errorText)
+      auth.error('Auth failed', { error: errorText, status: authResponse.status })
       return NextResponse.json(
         { error: `Authentication failed: ${authResponse.statusText}` },
         { status: authResponse.status }
@@ -60,7 +61,7 @@ export async function POST(request: NextRequest) {
     const authData = await authResponse.json()
     const accessToken = authData.access_token
 
-    console.log('✅ Server: Got access token')
+    auth.debug('Got access token')
 
     // Get organization ID
     const orgResponse = await fetch(`${BACKEND_URL}/organizations/me/current`, {
@@ -72,7 +73,7 @@ export async function POST(request: NextRequest) {
 
     if (!orgResponse.ok) {
       const errorText = await orgResponse.text()
-      console.error('❌ Server: Org fetch failed:', errorText)
+      auth.error('Org fetch failed', { error: errorText, status: orgResponse.status })
       return NextResponse.json(
         { error: `Failed to get organization: ${orgResponse.statusText}` },
         { status: orgResponse.status }
@@ -80,7 +81,7 @@ export async function POST(request: NextRequest) {
     }
 
     const orgData = await orgResponse.json()
-    console.log('✅ Server: Got org data for org:', orgData.org_id)
+    auth.info('Got org data', { orgId: orgData.org_id })
 
     // Get connections
     const connectionsResponse = await fetch(`${BACKEND_URL}/connections?connection_provider=gdrive&limit=1`, {
@@ -92,7 +93,7 @@ export async function POST(request: NextRequest) {
 
     if (!connectionsResponse.ok) {
       const errorText = await connectionsResponse.text()
-      console.error('❌ Server: Connections fetch failed:', errorText)
+      auth.error('Connections fetch failed', { error: errorText, status: connectionsResponse.status })
       return NextResponse.json(
         { error: `Failed to get connections: ${connectionsResponse.statusText}` },
         { status: connectionsResponse.status }
@@ -100,7 +101,7 @@ export async function POST(request: NextRequest) {
     }
 
     const connections = await connectionsResponse.json()
-    console.log('✅ Server: Got connections:', connections.length)
+    auth.info('Got connections', { count: connections.length })
 
     return NextResponse.json({
       success: true,
@@ -111,7 +112,7 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('❌ Server: Authentication error:', error)
+    auth.error('Authentication error', { error })
     return NextResponse.json(
       { error: 'Internal server error during authentication' },
       { status: 500 }
