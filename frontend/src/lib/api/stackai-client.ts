@@ -6,6 +6,8 @@
  * to the Stack AI API. This avoids CORS issues.
  */
 
+import { api, warn } from '@/lib/logger'
+
 // ==========================================
 // TYPES & INTERFACES
 // ==========================================
@@ -160,7 +162,7 @@ export class StackAIClient {
    * Authenticate with Stack AI through our API route
    */
   async authenticate(): Promise<AuthHeaders> {
-    console.log('🔐 Client: Starting authentication via API route...')
+    api.debug('Starting authentication via API route...')
     
     const requestBody: Record<string, string> = {}
     
@@ -168,9 +170,9 @@ export class StackAIClient {
     if (this.email && this.password) {
       requestBody.email = this.email
       requestBody.password = this.password
-      console.log('🔑 Client: Using provided credentials for:', this.email)
+      api.debug('Using provided credentials', { email: this.email })
     } else {
-      console.log('🔑 Client: Using server default credentials from environment')
+      api.debug('Using server default credentials from environment')
     }
     
     const response = await fetch('/api/stackai/auth', {
@@ -184,7 +186,7 @@ export class StackAIClient {
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}))
       const errorMessage = errorData.error || `Authentication failed: ${response.statusText}`
-      console.error('❌ Client: Auth failed:', errorMessage)
+      api.error('Auth failed', { message: errorMessage, status: response.status })
       throw new Error(errorMessage)
     }
 
@@ -196,7 +198,7 @@ export class StackAIClient {
     this.connections = data.connections || []
     this.authenticated = true
 
-    console.log('✅ Client: Authentication successful!')
+    api.info('Authentication successful!')
 
     return {
       Authorization: `Bearer ${this.accessToken}`
@@ -241,7 +243,7 @@ export class StackAIClient {
       params.set('parentResourceId', parentResourceId)
     }
 
-    console.log('📡 Client: Fetching files via API route...')
+    api.debug('Fetching files via API route...', { connectionId, parentResourceId })
 
     const response = await fetch(`/api/stackai/files?${params}`, {
       headers: {
@@ -252,12 +254,12 @@ export class StackAIClient {
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}))
       const errorMessage = errorData.error || `Failed to fetch files: ${response.statusText}`
-      console.error('❌ Client: Files fetch failed:', errorMessage)
+      api.error('Files fetch failed', { message: errorMessage, status: response.status })
       throw new Error(errorMessage)
     }
 
     const data = await response.json()
-    console.log(`✅ Client: Fetched ${data.data?.length || 0} files`)
+    api.info('Fetched files', { count: data.data?.length || 0 })
     
     return {
       data: data.data || [],
@@ -271,13 +273,14 @@ export class StackAIClient {
    * Get detailed information about specific resources
    */
   async getResourceDetails(
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    _connectionId: string,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars  
-    _resourceIds: string[]
+    connectionId: string,
+    resourceIds: string[]
   ): Promise<Record<string, FileResource>> {
+    // Suppress unused parameter warnings for future implementation
+    void connectionId;
+    void resourceIds;
     // For now, return empty object - we can implement this later if needed
-    console.log('⚠️ getResourceDetails not implemented yet')
+    warn('getResourceDetails not implemented yet')
     return {}
   }
 
@@ -291,32 +294,86 @@ export class StackAIClient {
     description: string,
     indexingParams?: Partial<IndexingParams>
   ): Promise<KnowledgeBase> {
-    // For demo purposes, return a mock knowledge base
-    // In a real implementation, this would call another API route
-    console.log('⚠️ createKnowledgeBase - using mock implementation for demo')
-    
-    const mockKb: KnowledgeBase = {
-      knowledge_base_id: `kb_${Date.now()}`,
-      name,
-      description,
-      connection_id: connectionId,
-      connection_source_ids: connectionSourceIds,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      indexing_params: indexingParams || {}
+    if (!this.authenticated || !this.accessToken) {
+      throw new Error('Client not authenticated. Call authenticate() first.')
     }
 
-    return mockKb
+    const requestData = {
+      connection_id: connectionId,
+      connection_source_ids: connectionSourceIds,
+      name,
+      description,
+      indexing_params: {
+        ocr: false,
+        unstructured: true,
+        embedding_params: { embedding_model: "text-embedding-ada-002", api_key: null },
+        chunker_params: { chunk_size: 1500, chunk_overlap: 500, chunker: "sentence" },
+        ...indexingParams
+      },
+      org_level_role: null,
+      cron_job_id: null,
+    }
+
+    api.debug('Creating knowledge base via API route...', { name, connectionId })
+
+    const response = await fetch('/api/stackai/knowledge-bases', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-access-token': this.accessToken,
+      },
+      body: JSON.stringify(requestData),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      const errorMessage = errorData.error || `Failed to create knowledge base: ${response.statusText}`
+      api.error('Knowledge base creation failed', { message: errorMessage, status: response.status })
+      throw new Error(errorMessage)
+    }
+
+    const data = await response.json()
+    api.info('Knowledge base created', { id: data.knowledge_base_id })
+
+    return {
+      knowledge_base_id: data.knowledge_base_id,
+      name: data.name,
+      description: data.description || '',
+      connection_id: connectionId,
+      connection_source_ids: connectionSourceIds,
+      created_at: data.created_at,
+      updated_at: data.updated_at,
+      indexing_params: requestData.indexing_params
+    }
   }
 
   /**
    * Trigger knowledge base synchronization
    */
-  async syncKnowledgeBase(
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    _knowledgeBaseId: string
-  ): Promise<boolean> {
-    console.log('⚠️ syncKnowledgeBase - using mock implementation for demo')
+  async syncKnowledgeBase(knowledgeBaseId: string): Promise<boolean> {
+    if (!this.authenticated || !this.accessToken || !this.orgId) {
+      throw new Error('Client not authenticated. Call authenticate() first.')
+    }
+
+    api.debug('Triggering knowledge base sync via API route...', { knowledgeBaseId })
+
+    const response = await fetch(`/api/stackai/knowledge-bases/${knowledgeBaseId}/sync/${this.orgId}`, {
+      method: 'POST',
+      headers: {
+        'x-access-token': this.accessToken,
+      },
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      const errorMessage = errorData.error || `Failed to sync knowledge base: ${response.statusText}`
+      api.error('Knowledge base sync failed', { message: errorMessage, status: response.status })
+      throw new Error(errorMessage)
+    }
+
+    const data = await response.json()
+    api.info('Knowledge base sync triggered', { message: data.message })
+
     return true
   }
 
@@ -324,14 +381,15 @@ export class StackAIClient {
    * Wait for knowledge base indexing to complete
    */
   async waitForIndexing(
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    _knowledgeBaseId: string,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    _timeout = 300000,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    _checkInterval = 5000
+    knowledgeBaseId: string,
+    timeout = 300000,
+    checkInterval = 5000
   ): Promise<boolean> {
-    console.log('⚠️ waitForIndexing - using mock implementation for demo')
+    // Suppress unused parameter warnings for future implementation
+    void knowledgeBaseId;
+    void timeout;
+    void checkInterval;
+    warn('waitForIndexing - using mock implementation for demo')
     
     // Simulate indexing delay
     await new Promise(resolve => setTimeout(resolve, 2000))
@@ -357,6 +415,13 @@ export class StackAIClient {
    */
   getUserEmail(): string | undefined {
     return this.userEmail
+  }
+
+  /**
+   * Get access token for API calls
+   */
+  getAccessToken(): string | undefined {
+    return this.accessToken
   }
 }
 
@@ -441,6 +506,8 @@ export function getDefaultClient(): StackAIClient {
 /**
  * Create a new knowledge base with selected files
  */
+// Note: This function is superseded by the StackAIClient.createKnowledgeBase method
+// Keeping for backwards compatibility but not actively used
 export const createKnowledgeBase = async (
   accessToken: string,
   request: CreateKnowledgeBaseRequest
