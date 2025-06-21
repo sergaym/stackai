@@ -15,10 +15,10 @@ const integrations: Integration[] = [
   { id: 'text', name: 'Text', icon: 'Edit3' },
   { id: 'confluence', name: 'Confluence', icon: '/confluence_icon.svg' },
   { id: 'notion', name: 'Notion', icon: '/notion_icon.svg' },
-  { id: 'googledrive', name: 'Google Drive', icon: '/google_drive_icon.svg', isActive: true },
+  { id: 'googledrive', name: 'Google Drive', icon: '/google_drive_icon.png', isActive: true },
   { id: 'onedrive', name: 'OneDrive', icon: '/onedrive_icon.svg' },
-  { id: 'sharepoint', name: 'SharePoint', icon: '/sharepoint_icon.svg' },
-  { id: 'slack', name: 'Slack', icon: '/slack_icon.svg' }
+  { id: 'sharepoint', name: 'SharePoint', icon: '/sharepoint_icon.png' },
+  { id: 'slack', name: 'Slack', icon: '/slack_icon.png' }
 ];
 
 export function FilePickerDialog({ isOpen, onClose }: FilePickerDialogProps) {
