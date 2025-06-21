@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import { Search, ChevronDown, RefreshCw, MoreHorizontal, Calendar, FileText, HardDrive, Check } from 'lucide-react';
+import { Search, ChevronDown, RefreshCw, MoreHorizontal, Calendar, FileText, HardDrive, Check, CheckCircle, Clock, XCircle } from 'lucide-react';
 import { 
   FolderIcon, 
   DocumentIcon, 
@@ -27,10 +27,11 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { IntegrationIcon } from '@/components/ui/integration-icon';
-import { useStackAI } from '@/hooks/useStackAI';
+import { useStackAI } from '@/contexts/stackai-context';
 import { useFiles } from '@/hooks/useFiles';
 import { useFileActions } from '@/hooks/useFileActions';
-import { formatFileSize, formatDate, getFileIcon, getFileName, filterFiles, sortFiles, type SortOption, type SortDirection } from '@/lib/utils';
+import { getFileIcon, getFileName, filterFiles, sortFiles, type SortOption, type SortDirection } from '@/lib/utils';
+import { FileItem } from './FileItem';
 import { ResourceType, ResourceStatus, type FileResource } from '@/lib/api/stackai-client';
 import type { Integration } from '@/types';
 import { toast } from 'sonner';
@@ -61,8 +62,6 @@ export function IntegrationContent({
           onItemSelect={onItemSelect}
           searchTerm={searchTerm}
           onSearchChange={onSearchChange}
-          showAddAccountDialog={showAddAccountDialog}
-          setShowAddAccountDialog={setShowAddAccountDialog}
         />;
       case 'files':
         return <FilesContent />;
@@ -120,26 +119,28 @@ export function IntegrationContent({
       {/* Add Account Dialog */}
       {showAddAccountDialog && (
         <div 
-          className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center"
+          className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
           onClick={() => setShowAddAccountDialog(false)}
         >
           <div 
             className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="text-center">
+            <div className="text-left">
               <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                Feature Not Available
+                Feature Coming Soon
               </h3>
-              <p className="text-gray-600 mb-6">
-                Adding additional Google Drive accounts is not yet available. This feature is coming soon!
+              <p className="text-gray-600 mb-6 text-sm leading-relaxed">
+                Additional Google Drive accounts are not yet available. This feature is coming soon to help you manage multiple Google Drive connections.
               </p>
-              <Button 
-                onClick={() => setShowAddAccountDialog(false)}
-                className="w-full"
-              >
-                Got it
-              </Button>
+              <div className="flex gap-3 justify-end">
+                <Button 
+                  onClick={() => setShowAddAccountDialog(false)}
+                  className="px-4 py-2 bg-gray-900 hover:bg-gray-800 text-white"
+                >
+                  Got it
+                </Button>
+              </div>
             </div>
           </div>
         </div>
@@ -149,13 +150,11 @@ export function IntegrationContent({
 }
 
 // Enhanced Google Drive content with real API integration
-function GoogleDriveContent({ selectedItems, onItemSelect, searchTerm, onSearchChange, showAddAccountDialog, setShowAddAccountDialog }: {
+function GoogleDriveContent({ selectedItems, onItemSelect, searchTerm, onSearchChange }: {
   selectedItems: string[];
   onItemSelect: (id: string) => void;
   searchTerm: string;
   onSearchChange: (term: string) => void;
-  showAddAccountDialog: boolean;
-  setShowAddAccountDialog: (show: boolean) => void;
 }) {
   // Authentication and API state
   const { isAuthenticated, isAuthenticating, error: authError, authenticate, userEmail } = useStackAI();
@@ -255,14 +254,7 @@ function GoogleDriveContent({ selectedItems, onItemSelect, searchTerm, onSearchC
     return result;
   }, [files, searchTerm, sortBy, sortDirection]);
 
-  // Handle indexing
-  const handleIndexSelected = useCallback(async () => {
-    if (selectedItems.length === 0) {
-      toast.error('Please select files to index');
-      return;
-    }
-    await indexFiles(selectedItems, files);
-  }, [selectedItems, indexFiles, files]);
+
 
   // Generate breadcrumbs
   const breadcrumbs = useMemo(() => {
@@ -668,91 +660,43 @@ function EmptyState() {
   );
 }
 
-// Enhanced file item component with status indicators
-interface FileItemProps {
-  file: FileResource;
-  isSelected: boolean;
-  onSelect: (id: string) => void;
-  onOpen: (file: FileResource) => void;
-  isChild?: boolean;
+// Helper function to get indexing status display
+function getIndexingStatus(status: ResourceStatus) {
+  switch (status) {
+    case ResourceStatus.INDEXED:
+      return {
+        icon: <CheckCircle className="h-4 w-4 text-green-500" />,
+        label: 'Indexed',
+        color: 'text-green-600',
+        bgColor: 'bg-green-50'
+      };
+    case ResourceStatus.INDEXING:
+    case ResourceStatus.PENDING:
+      return {
+        icon: <Clock className="h-4 w-4 text-yellow-500" />,
+        label: 'Indexing...',
+        color: 'text-yellow-600',
+        bgColor: 'bg-yellow-50'
+      };
+    case ResourceStatus.ERROR:
+      return {
+        icon: <XCircle className="h-4 w-4 text-red-500" />,
+        label: 'Error',
+        color: 'text-red-600',
+        bgColor: 'bg-red-50'
+      };
+    case ResourceStatus.RESOURCE:
+    default:
+      return {
+        icon: <div className="h-4 w-4 rounded-full border-2 border-gray-300" />,
+        label: 'Not indexed',
+        color: 'text-gray-500',
+        bgColor: 'bg-gray-50'
+      };
+  }
 }
 
-function FileItem({ file, isSelected, onSelect, onOpen, isChild = false }: FileItemProps) {
-  const isDirectory = file.inode_type === ResourceType.DIRECTORY;
-  const fileName = getFileName(file.inode_path.path);
-  const fileIcon = getFileIcon(fileName, isDirectory);
 
-  const handleClick = useCallback(() => {
-    if (isDirectory) {
-      onOpen(file);
-    }
-  }, [file, isDirectory, onOpen]);
-
-  const handleSelectChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    e.stopPropagation();
-    onSelect(file.resource_id);
-  }, [file.resource_id, onSelect]);
-
-  return (
-    <div 
-      className={clsx(
-        'flex items-center gap-3 py-2 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0',
-        isChild ? 'pl-14 pr-3' : 'px-3',
-        isSelected && 'bg-blue-50'
-      )}
-      onClick={handleClick}
-    >
-      {/* Selection checkbox */}
-      <input
-        type="checkbox"
-        checked={isSelected}
-        onChange={handleSelectChange}
-        className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 focus:ring-offset-0"
-        onClick={(e) => e.stopPropagation()}
-      />
-
-      {/* File icon and name */}
-      <div className="flex items-center gap-2 flex-1 min-w-0">
-        <div className="flex-shrink-0">
-          {fileIcon}
-        </div>
-        <span className={clsx(
-          'text-sm text-gray-900 truncate',
-          isDirectory && 'text-blue-700'
-        )}>
-          {fileName}
-        </span>
-        {file.dataloader_metadata?.last_modified_by && !isChild && (
-          <span className="text-xs text-gray-500 ml-2 truncate">
-            {file.dataloader_metadata.last_modified_by}
-          </span>
-        )}
-      </div>
-
-      {/* File count or empty */}
-      <div className="text-sm text-gray-500 min-w-[40px] text-center">
-        {isDirectory ? '0' : ''}
-      </div>
-
-      {/* Import button - only for files, not folders */}
-      {!isDirectory && (
-        <div className="flex-shrink-0 mr-2.5">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              onSelect(file.resource_id);
-            }}
-            className="h-7 px-3 text-xs border-gray-200 hover:bg-gray-50 text-gray-700"
-          >
-            Import
-          </Button>
-        </div>
-      )}
-    </div>
-  );
-}
 
 // Coming Soon component for non-implemented integrations
 function ComingSoonContent({ integration }: { integration: Integration }) {
